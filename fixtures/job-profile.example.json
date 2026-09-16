@@ -1,0 +1,77 @@
+{
+  "name": "张三",
+  "english_name": "San Zhang",
+  "email": "example@example.com",
+  "phone": "",
+  "location": "示例市",
+  "target_roles": "AI 产品经理",
+  "github": "",
+  "portfolio": "",
+  "education": [
+    {
+      "school": "示例大学",
+      "degree": "本科",
+      "major": "计算机科学",
+      "date_range": "2020-09 ~ 2024-06"
+    }
+  ],
+  "internships": [
+    {
+      "company": "公司 A",
+      "role": "产品经理实习生",
+      "date_range": "2023-08 ~ 2023-09",
+      "projects": [
+        {
+          "project_name": "项目 Alpha",
+          "company": "公司 A",
+          "institution": "",
+          "role": "产品经理实习生",
+          "responsibilities": "负责项目 Alpha 的需求梳理与原型设计",
+          "results": ""
+        }
+      ]
+    },
+    {
+      "company": "公司 B",
+      "role": "产品实习生",
+      "date_range": "2024-10 ~ 至今",
+      "projects": [
+        {
+          "project_name": "项目 Beta",
+          "company": "公司 B",
+          "institution": "",
+          "role": "产品实习生",
+          "responsibilities": "参与项目 Beta 建设与评测",
+          "results": ""
+        },
+        {
+          "project_name": "项目 Gamma",
+          "company": "公司 B",
+          "institution": "",
+          "role": "产品实习生",
+          "responsibilities": "支持项目 Gamma 的需求讨论",
+          "results": ""
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "project_name": "校园实践项目",
+      "company": "",
+      "institution": "示例大学",
+      "role": "组长",
+      "responsibilities": "统筹实践项目推进",
+      "results": ""
+    }
+  ],
+  "skills": {
+    "product": "PRD、原型",
+    "data": "SQL、Excel",
+    "ai": "RAG 概念、Prompt"
+  },
+  "academic": {
+    "papers": ["示例论文《虚构标题》"],
+    "patents": []
+  }
+}

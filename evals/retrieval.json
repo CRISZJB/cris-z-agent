@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "notes": "Retrieval-only eval. Compare BM25 / Vector / Hybrid by evidence_id hit rates. No LLM judging.",
+  "questions": [
+    {
+      "id": "no-vector-db",
+      "query": "为什么没有使用向量数据库",
+      "expected": ["project-1:tradeoffs"],
+      "kind": "semantic"
+    },
+    {
+      "id": "redo-project",
+      "query": "如果重新做这个项目会改什么",
+      "expected": ["project-1:retro"],
+      "kind": "keyword-overlap"
+    },
+    {
+      "id": "user-problem",
+      "query": "这个项目到底解决什么用户问题",
+      "expected": ["project-1:user-problem"],
+      "kind": "keyword-overlap"
+    },
+    {
+      "id": "no-complex-framework",
+      "query": "为什么第一版不用复杂 AI 框架",
+      "expected": ["project-1:tradeoffs"],
+      "kind": "semantic"
+    },
+    {
+      "id": "my-role",
+      "query": "我在这个项目里负责什么",
+      "expected": ["project-1:role"],
+      "kind": "keyword-overlap"
+    },
+    {
+      "id": "avoid-fabrication",
+      "query": "这个智能体怎么避免编造我的经历",
+      "expected": ["project-1:ai-design", "project-1:product-decision"],
+      "kind": "semantic"
+    },
+    {
+      "id": "keyword-tradeoffs",
+      "query": "产品取舍 向量库 复杂框架 长期记忆",
+      "expected": ["project-1:tradeoffs"],
+      "kind": "keyword-overlap"
+    },
+    {
+      "id": "semantic-tool-not-pipeline",
+      "query": "为什么选择让模型自己决定要不要检索，而不是每个问题都先搜索",
+      "expected": ["project-1:product-decision", "project-1:insight"],
+      "kind": "semantic"
+    },
+    {
+      "id": "fuzzy-hiring-cost",
+      "query": "怎么让招聘的人更快看懂我这个人",
+      "expected": ["project-1:business-problem", "project-1:user-problem"],
+      "kind": "fuzzy"
+    },
+    {
+      "id": "fuzzy-no-business-result",
+      "query": "这个项目有没有真实上线后的转化数据",
+      "expected": ["project-1:results", "project-1:retro"],
+      "kind": "fuzzy"
+    },
+    {
+      "id": "keyword-evidence-id",
+      "query": "证据 ID 章节级来源",
+      "expected": ["project-1:solution", "project-1:mvp"],
+      "kind": "keyword-overlap"
+    },
+    {
+      "id": "semantic-alternatives",
+      "query": "当时还考虑过哪些别的产品形态",
+      "expected": ["project-1:alternatives"],
+      "kind": "semantic"
+    }
+  ]
+}

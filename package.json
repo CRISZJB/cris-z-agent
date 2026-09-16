@@ -1,0 +1,51 @@
+{
+  "name": "agent",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "validate-content": "tsx scripts/validate-content.ts",
+    "prebuild": "npm run validate-content",
+    "index:knowledge": "tsx scripts/index-knowledge.ts",
+    "eval": "tsx scripts/eval-agent.ts",
+    "eval:manual": "tsx scripts/manual-eval.ts",
+    "eval:retrieval": "tsx scripts/eval-retrieval.ts",
+    "smoke:deepseek": "tsx scripts/smoke-deepseek.ts",
+    "diagnose:timeout": "tsx scripts/diagnose-timeout.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "gray-matter": "^4.0.3",
+    "mammoth": "^1.12.3",
+    "next": "16.3.5",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.13",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.24.3": true,
+    "esbuild@0.28.2": true,
+    "sharp@0.34.5": true,
+    "sharp@0.35.4": true,
+    "protobufjs@7.6.6": true,
+    "unrs-resolver@1.12.2": true
+  }
+}

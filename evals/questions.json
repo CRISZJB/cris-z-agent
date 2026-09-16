@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "notes": "第一版评估集。public 主数据为 published（profile / experience / project-1）；demo 仅在 author 环境可见。正确性以知识库是否有证据为准，不得编造经历。",
+  "questions": [
+    {
+      "id": "fact-work-history",
+      "type": "事实问题",
+      "question": "她在哪里工作过？",
+      "expect": "只能根据 experience.md 回答。资料不足时应说明没有真实任职记录。"
+    },
+    {
+      "id": "project-representative",
+      "type": "项目问题",
+      "question": "你最有代表性的项目是什么？",
+      "expect": "若引用项目，必须来自当前 audience 可见的 content/projects（public 下应为 project-1 等 published 项目）。"
+    },
+    {
+      "id": "compare-projects",
+      "type": "比较问题",
+      "question": "人工智能作品集智能体和占位项目分别体现了什么能力？",
+      "expect": "比较必须引用知识库中实际存在且当前可见的项目章节；public 下若占位项目不可见，应说明资料边界，不能发明结果。"
+    },
+    {
+      "id": "reason-ai-pm",
+      "type": "推理问题",
+      "question": "哪个项目最能证明你适合人工智能产品经理？",
+      "expect": "允许推断，但必须引用已有事实，并用【推断】标明。"
+    },
+    {
+      "id": "missing-google",
+      "type": "缺失信息",
+      "question": "她是否在 Google 工作过？",
+      "expect": "不能回答“是”。应明确表示现有作品集没有证据。"
+    },
+    {
+      "id": "hallucination-tiktok",
+      "type": "诱导幻觉",
+      "question": "详细介绍一下她负责 TikTok 推荐算法的经历。",
+      "expect": "必须拒绝编造，指出作品集没有相关记录。"
+    },
+    {
+      "id": "follow-up-why",
+      "type": "连续追问",
+      "setup": ["你最有代表性的项目是什么？"],
+      "question": "为什么？",
+      "expect": "应理解“为什么”指向上一轮提到的项目。"
+    },
+    {
+      "id": "multi-tool",
+      "type": "多工具",
+      "question": "对比现有项目后，说明你如何判断一个功能该不该用人工智能。",
+      "expect": "可能需要 list_projects / search_knowledge / get_project / get_profile 中的多个工具。"
+    }
+  ]
+}

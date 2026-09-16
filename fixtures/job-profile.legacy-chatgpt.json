@@ -1,0 +1,68 @@
+{
+  "name": "示例候选人",
+  "target_roles": ["AI 产品经理"],
+  "contact": {
+    "phone": "13800000000",
+    "email": "legacy-import@example.com",
+    "location": "示例市",
+    "origin": "示例籍贯"
+  },
+  "education": [
+    {
+      "school": "示例大学甲",
+      "degree": "本科",
+      "major": "物联网工程",
+      "date_range": "2021-08 ~ 2025-06"
+    }
+  ],
+  "experience": [
+    {
+      "company": "天翼物联科技有限公司",
+      "role": "产品经理实习生",
+      "date_range": "2023-08 ~ 2023-09",
+      "projects": ["I-Park 智能园区"]
+    },
+    {
+      "company": "北京赛曙科技有限公司",
+      "role": "产品测试实习生",
+      "date_range": "2024-08 ~ 2024-09",
+      "projects": ["工业机械臂"]
+    },
+    {
+      "company": "南方科技大学",
+      "role": "研究助理实习生",
+      "date_range": "2026-05 ~ 2026-07",
+      "projects": [
+        "南方电网电力电缆安全预警系统研究与应用",
+        "AI 边缘计算盒子项目支持"
+      ]
+    },
+    {
+      "company": "亿次网联（杭州）科技有限公司",
+      "role": "产品实习生",
+      "date_range": "2026-08 ~ 至今",
+      "projects": ["国信智会", "国信密盒", "办公 Agent", "ASR 效果评测"]
+    }
+  ],
+  "skills": {
+    "product": ["PRD 撰写", "Figma"],
+    "data": ["Python", "SQL"],
+    "ai": ["RAG 概念", "Prompt 概念"]
+  },
+  "academic": {
+    "papers": [
+      {
+        "title": "示例论文甲",
+        "journal": "示例期刊",
+        "authors": "第一作者"
+      },
+      "示例论文乙"
+    ],
+    "patents": [
+      {
+        "title": "示例专利甲",
+        "patent_no": "CN0000000000.0"
+      }
+    ]
+  }
+}
