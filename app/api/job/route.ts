@@ -17,6 +17,7 @@ import {
 } from "@/lib/job/fill-assist";
 import { runAgent } from "@/lib/agent/agent";
 import { runWithChatKnowledgeContext } from "@/lib/knowledge/visibility";
+import { DemoModeWriteError, demoForbiddenJson, isPublicDemoMode } from "@/lib/demo/mode";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -49,18 +50,29 @@ export async function GET() {
     profile,
     empty: isJobProfileEmpty(profile),
     conflict_hints: conflictHintsForProfile(profile),
+    public_demo_mode: isPublicDemoMode(),
   });
 }
 
 export async function PUT(request: NextRequest) {
-  const json = await request.json();
-  const body = json as { profile?: unknown };
-  const payload = body.profile ?? json;
-  const next = writeJobProfile(normalizeJobProfile(payload));
-  return Response.json({
-    profile: next,
-    conflict_hints: conflictHintsForProfile(next),
-  });
+  if (isPublicDemoMode()) {
+    return demoForbiddenJson("公开演示模式不允许保存或修改 Job Profile。");
+  }
+  try {
+    const json = await request.json();
+    const body = json as { profile?: unknown };
+    const payload = body.profile ?? json;
+    const next = writeJobProfile(normalizeJobProfile(payload));
+    return Response.json({
+      profile: next,
+      conflict_hints: conflictHintsForProfile(next),
+    });
+  } catch (error) {
+    if (error instanceof DemoModeWriteError) {
+      return demoForbiddenJson(error.message);
+    }
+    throw error;
+  }
 }
 
 const AssistSchema = z.object({
@@ -80,6 +92,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (parsed.data.mode === "import_preview") {
+      if (isPublicDemoMode()) {
+        return demoForbiddenJson("公开演示模式不允许导入 Job Profile。");
+      }
       const imported = parseJobProfileImport(parsed.data.import_json);
       const current = readJobProfile();
       return Response.json({
@@ -93,6 +108,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (parsed.data.mode === "import_commit") {
+      if (isPublicDemoMode()) {
+        return demoForbiddenJson("公开演示模式不允许导入 Job Profile。");
+      }
       const imported = parseJobProfileImport(parsed.data.import_json);
       if (imported.warnings.some((warning) => /解析失败|必须是 JSON/.test(warning))) {
         return Response.json({ error: imported.warnings.join(" ") }, { status: 400 });
@@ -204,6 +222,9 @@ ${parsed.data.jd_text ?? ""}
       answer: toPlainText(result.answer ?? ""),
     });
   } catch (error) {
+    if (error instanceof DemoModeWriteError) {
+      return demoForbiddenJson(error.message);
+    }
     return Response.json(
       { error: error instanceof Error ? error.message : "求职助手失败。" },
       { status: 500 },

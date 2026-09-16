@@ -11,6 +11,14 @@
 - 通用问题可以直接回答
 - 基于资料可总结、改写和生成
 
+## Public Demo
+
+在线公开演示使用匿名示例数据（`demo/`），文件上传与 Job Profile 持久化写入关闭。
+
+本地运行（默认不开启 `PUBLIC_DEMO_MODE`）仍支持完整上传、删除与 Job Profile 维护。
+
+开启方式：在部署环境设置 `PUBLIC_DEMO_MODE=true`。
+
 ## Screenshots
 
 仓库可后续放入真实截图（当前不附带伪造图）：
@@ -262,7 +270,7 @@ Agent 不允许根据文本位置、chunk 顺序或相邻片段，自行猜测�
 npm test
 ```
 
-最新状态：**18 files / 96 tests**。
+最新状态：**19 files / 104 tests**。
 
 另外保留：
 
@@ -293,6 +301,12 @@ DEEPSEEK_API_KEY=
 DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 RETRIEVAL_MODE=bm25
+```
+
+可选公开演示：
+
+```
+PUBLIC_DEMO_MODE=true
 ```
 
 启动：

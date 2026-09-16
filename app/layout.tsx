@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import Link from "next/link";
+import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
 import "./globals.css";
 
 const serif = Noto_Serif_SC({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/job-assistant">求职助手</Link>
           <Link href="/settings">设置</Link>
         </header>
+        <DemoModeBanner />
         {children}
       </body>
     </html>

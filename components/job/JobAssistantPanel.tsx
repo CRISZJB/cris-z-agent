@@ -41,7 +41,7 @@ function emptyInternship(): JobInternshipEntry {
   return { company: "", role: "", date_range: "", projects: [] };
 }
 
-export function JobAssistantPanel() {
+export function JobAssistantPanel({ publicDemoMode = false }: { publicDemoMode?: boolean }) {
   const [profile, setProfile] = useState<JobProfile>({ ...EMPTY_JOB_PROFILE });
   const [fieldsText, setFieldsText] = useState(
     "姓名：\n学校：\n专业：\n毕业时间：\n最近一段实习：\n公司：\n岗位：\n项目经历：\n自我介绍：\n为什么申请这个岗位：\n",
@@ -56,7 +56,9 @@ export function JobAssistantPanel() {
   const [conflictHints, setConflictHints] = useState<string[]>([]);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [pendingImportJson, setPendingImportJson] = useState<unknown>(null);
+  const [demoMode, setDemoMode] = useState(publicDemoMode);
   const fileRef = useRef<HTMLInputElement>(null);
+  const profileWriteDisabled = demoMode || busy;
 
   useEffect(() => {
     void fetch("/api/job")
@@ -65,6 +67,7 @@ export function JobAssistantPanel() {
         (payload: {
           profile?: JobProfile;
           conflict_hints?: string[];
+          public_demo_mode?: boolean;
         }) => {
           if (payload.profile) {
             setProfile({
@@ -78,11 +81,18 @@ export function JobAssistantPanel() {
             });
           }
           setConflictHints(payload.conflict_hints ?? []);
+          if (typeof payload.public_demo_mode === "boolean") {
+            setDemoMode(payload.public_demo_mode);
+          }
         },
       );
   }, []);
 
   async function saveProfile() {
+    if (demoMode) {
+      setStatus("公开演示模式不允许保存 Job Profile。");
+      return;
+    }
     setBusy(true);
     setStatus("");
     const response = await fetch("/api/job", {
@@ -108,6 +118,10 @@ export function JobAssistantPanel() {
   }
 
   async function onPickImportFile(file: File | null) {
+    if (demoMode) {
+      setStatus("公开演示模式不允许导入 Job Profile。");
+      return;
+    }
     if (!file) {
       return;
     }
@@ -254,13 +268,28 @@ export function JobAssistantPanel() {
             hidden
             onChange={(event) => void onPickImportFile(event.target.files?.[0] ?? null)}
           />
-          <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
+          <button
+            type="button"
+            disabled={profileWriteDisabled}
+            title={demoMode ? "公开演示模式不允许导入 Job Profile" : undefined}
+            onClick={() => fileRef.current?.click()}
+          >
             导入 Job Profile
           </button>
-          <button type="button" disabled={busy} onClick={() => void saveProfile()}>
+          <button
+            type="button"
+            disabled={profileWriteDisabled}
+            title={demoMode ? "公开演示模式不允许保存 Job Profile" : undefined}
+            onClick={() => void saveProfile()}
+          >
             保存档案
           </button>
         </div>
+        {demoMode ? (
+          <p className="privacy-note">
+            公开演示模式：可浏览匿名档案并使用「根据资料填写」，但不可保存或导入。
+          </p>
+        ) : null}
 
         {importPreview ? (
           <div className="job-import-preview">

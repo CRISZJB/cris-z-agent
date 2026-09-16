@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "document_id": "demo-doc-basics",
+      "filename": "张三-示例求职说明.md",
+      "knowledge_space": "job",
+      "document_type": "md",
+      "content_type": "general",
+      "imported_at": "2026-01-01T00:00:00.000Z",
+      "source_path": "demo/knowledge/basics.md",
+      "char_count": 420,
+      "chunk_count": 2
+    },
+    {
+      "document_id": "demo-doc-projects",
+      "filename": "张三-示例项目笔记.md",
+      "knowledge_space": "job",
+      "document_type": "md",
+      "content_type": "general",
+      "imported_at": "2026-01-01T00:00:00.000Z",
+      "source_path": "demo/knowledge/projects.md",
+      "char_count": 560,
+      "chunk_count": 2
+    }
+  ],
+  "chunks": [
+    {
+      "evidence_id": "demo-doc-basics:chunk-001",
+      "document_id": "demo-doc-basics",
+      "filename": "张三-示例求职说明.md",
+      "knowledge_space": "job",
+      "section": "基本信息",
+      "content": "姓名：张三。英文名：San Zhang。目标岗位：AI 产品经理。现居：示例市。学校：示例大学（计算机科学，本科，2020-09 ~ 2024-06）。本文件为公开演示用的完全虚构资料。",
+      "chunk_index": 1,
+      "content_type": "general"
+    },
+    {
+      "evidence_id": "demo-doc-basics:chunk-002",
+      "document_id": "demo-doc-basics",
+      "filename": "张三-示例求职说明.md",
+      "knowledge_space": "job",
+      "section": "求职说明",
+      "content": "张三希望从事 AI 产品经理方向，关注检索增强生成（RAG）、证据引用与事实边界。公开演示模式下仅提供匿名示例数据，不代表任何真实个人。",
+      "chunk_index": 2,
+      "content_type": "general"
+    },
+    {
+      "evidence_id": "demo-doc-projects:chunk-001",
+      "document_id": "demo-doc-projects",
+      "filename": "张三-示例项目笔记.md",
+      "knowledge_space": "job",
+      "section": "星河助手",
+      "content": "项目：星河助手（虚构）。公司：示例科技有限公司。角色：产品经理实习生。工作：需求梳理、原型设计、评测指标设计。说明：该项目仅用于公开 Demo，内容完全虚构。",
+      "chunk_index": 1,
+      "content_type": "general"
+    },
+    {
+      "evidence_id": "demo-doc-projects:chunk-002",
+      "document_id": "demo-doc-projects",
+      "filename": "张三-示例项目笔记.md",
+      "knowledge_space": "job",
+      "section": "云桥会议纪要",
+      "content": "项目：云桥会议纪要（虚构）。公司：云桥智能（示例）。角色：AI 产品实习生。工作：会议转写与纪要场景梳理、基础效果评测。另参与知识问答 Demo，区分事实回答与生成建议。",
+      "chunk_index": 2,
+      "content_type": "general"
+    }
+  ]
+}

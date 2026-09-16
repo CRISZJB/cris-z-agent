@@ -14,6 +14,8 @@ import { EMPTY_JOB_PROFILE as EMPTY_PROFILE } from "./types";
 import { normalizeJobProfile } from "./job-profile";
 import type { KnowledgeSpaceId } from "../knowledge/spaces";
 import { isKnowledgeSpaceId } from "../knowledge/spaces";
+import { assertDemoWritable, isPublicDemoMode } from "../demo/mode";
+import { loadDemoDocumentsStore, loadDemoJobProfile } from "../demo/store";
 
 const DATA_ROOT = path.join(process.cwd(), ".data");
 const UPLOADS_DIR = path.join(DATA_ROOT, "uploads");
@@ -38,6 +40,9 @@ function emptyStore(): DocumentsStoreFile {
 }
 
 export function readDocumentsStore(): DocumentsStoreFile {
+  if (isPublicDemoMode()) {
+    return loadDemoDocumentsStore();
+  }
   ensureDirs();
   if (!fs.existsSync(DOCUMENTS_FILE)) {
     return emptyStore();
@@ -61,6 +66,7 @@ export function readDocumentsStore(): DocumentsStoreFile {
 }
 
 function writeDocumentsStore(store: DocumentsStoreFile) {
+  assertDemoWritable();
   ensureDirs();
   fs.writeFileSync(DOCUMENTS_FILE, JSON.stringify(store, null, 2), "utf8");
 }
@@ -109,6 +115,7 @@ export async function importDocumentFile(input: {
   knowledgeSpace: KnowledgeSpaceId;
   contentType?: ContentType;
 }): Promise<StoredDocument> {
+  assertDemoWritable();
   if (!isKnowledgeSpaceId(input.knowledgeSpace)) {
     throw new Error("无效的知识空间。");
   }
@@ -178,6 +185,7 @@ export async function importDocumentFile(input: {
 }
 
 export function deleteStoredDocument(documentId: string) {
+  assertDemoWritable();
   const store = readDocumentsStore();
   const existing = store.documents.find((doc) => doc.document_id === documentId);
   if (!existing) {
@@ -194,6 +202,9 @@ export function deleteStoredDocument(documentId: string) {
 }
 
 export function readJobProfile(): JobProfile {
+  if (isPublicDemoMode()) {
+    return loadDemoJobProfile();
+  }
   ensureDirs();
   if (!fs.existsSync(JOB_PROFILE_FILE)) {
     return structuredClone(EMPTY_PROFILE);
@@ -207,6 +218,7 @@ export function readJobProfile(): JobProfile {
 }
 
 export function writeJobProfile(profile: JobProfile) {
+  assertDemoWritable();
   ensureDirs();
   const normalized = normalizeJobProfile(profile);
   fs.writeFileSync(JOB_PROFILE_FILE, JSON.stringify(normalized, null, 2), "utf8");

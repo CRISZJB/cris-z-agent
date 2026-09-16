@@ -5,16 +5,23 @@ import {
   listStoredDocuments,
 } from "@/lib/documents";
 import { isKnowledgeSpaceId } from "@/lib/knowledge/spaces";
+import { DemoModeWriteError, demoForbiddenJson, isPublicDemoMode } from "@/lib/demo/mode";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const space = request.nextUrl.searchParams.get("knowledge_space") ?? "all";
   const scope = space === "all" || isKnowledgeSpaceId(space) ? space : "all";
-  return Response.json({ documents: listStoredDocuments(scope) });
+  return Response.json({
+    documents: listStoredDocuments(scope),
+    public_demo_mode: isPublicDemoMode(),
+  });
 }
 
 export async function POST(request: NextRequest) {
+  if (isPublicDemoMode()) {
+    return demoForbiddenJson("公开演示模式暂不支持上传个人文件。");
+  }
   try {
     const form = await request.formData();
     const file = form.get("file");
@@ -35,6 +42,9 @@ export async function POST(request: NextRequest) {
     });
     return Response.json({ document });
   } catch (error) {
+    if (error instanceof DemoModeWriteError) {
+      return demoForbiddenJson(error.message);
+    }
     return Response.json(
       { error: error instanceof Error ? error.message : "导入失败。" },
       { status: 400 },
@@ -43,13 +53,23 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (isPublicDemoMode()) {
+    return demoForbiddenJson("公开演示模式暂不支持删除文件。");
+  }
   const documentId = request.nextUrl.searchParams.get("document_id");
   if (!documentId) {
     return Response.json({ error: "缺少 document_id。" }, { status: 400 });
   }
-  const ok = deleteStoredDocument(documentId);
-  if (!ok) {
-    return Response.json({ error: "文档不存在。" }, { status: 404 });
+  try {
+    const ok = deleteStoredDocument(documentId);
+    if (!ok) {
+      return Response.json({ error: "文档不存在。" }, { status: 404 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    if (error instanceof DemoModeWriteError) {
+      return demoForbiddenJson(error.message);
+    }
+    throw error;
   }
-  return Response.json({ ok: true });
 }

@@ -1,0 +1,77 @@
+{
+  "name": "张三",
+  "english_name": "San Zhang",
+  "email": "example@example.com",
+  "phone": "",
+  "location": "示例市",
+  "target_roles": "AI 产品经理",
+  "github": "",
+  "portfolio": "",
+  "education": [
+    {
+      "school": "示例大学",
+      "degree": "本科",
+      "major": "计算机科学",
+      "date_range": "2020-09 ~ 2024-06"
+    }
+  ],
+  "internships": [
+    {
+      "company": "示例科技有限公司",
+      "role": "产品经理实习生",
+      "date_range": "2023-07 ~ 2023-09",
+      "projects": [
+        {
+          "project_name": "星河助手",
+          "company": "示例科技有限公司",
+          "institution": "",
+          "role": "产品经理实习生",
+          "responsibilities": "参与星河助手（虚构 AI 办公助手）的需求梳理、原型设计与评测指标设计。",
+          "results": ""
+        }
+      ]
+    },
+    {
+      "company": "云桥智能（示例）",
+      "role": "AI 产品实习生",
+      "date_range": "2024-03 ~ 2024-06",
+      "projects": [
+        {
+          "project_name": "云桥会议纪要",
+          "company": "云桥智能（示例）",
+          "institution": "",
+          "role": "AI 产品实习生",
+          "responsibilities": "围绕会议转写与纪要生成梳理用户场景，搭建基础效果评测表。",
+          "results": ""
+        },
+        {
+          "project_name": "知识问答 Demo",
+          "company": "云桥智能（示例）",
+          "institution": "",
+          "role": "AI 产品实习生",
+          "responsibilities": "设计基于本地知识库的问答演示流程，区分事实回答与生成建议。",
+          "results": ""
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "project_name": "校园 AI 学习助手（课程项目）",
+      "company": "",
+      "institution": "示例大学",
+      "role": "产品负责人",
+      "responsibilities": "带领小组完成课程项目：用检索增强回答课程 FAQ，并标注来源。",
+      "results": ""
+    }
+  ],
+  "skills": {
+    "product": "PRD、原型、用户访谈整理",
+    "data": "SQL、Excel",
+    "ai": "RAG 概念、Prompt、基础评测"
+  },
+  "academic": {
+    "papers": [],
+    "patents": []
+  }
+}
