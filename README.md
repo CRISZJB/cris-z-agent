@@ -2,42 +2,58 @@
 
 一个面向日常、工作、学习与求职场景的个人 AI Agent。
 
-基于 DeepSeek Tool Calling、本地知识库与 Evidence 机制构建的个人 AI Agent，可在通用问答、个人资料事实问答与基于资料生成之间自主切换。
+基于 DeepSeek Tool Calling、个人知识库与 Evidence 机制构建，可在通用问答、个人资料事实问答与基于资料生成之间自主切换。
 
-- 本地导入个人文件
-- 按知识空间组织
+**[🌐 Live Demo](https://cris-z-agent.onrender.com) · [💻 GitHub Repository](https://github.com/CRISZJB/cris-z-agent)**
+
+> Public Demo 支持会话级临时文件上传。上传内容只属于当前演示会话，不做长期保存；示例资料也可以从当前会话中移除，避免干扰自己的测试。
+
+- 导入 TXT / MD / PDF / DOCX（含简历）
+- 按知识空间组织资料
 - Agent 自主决定是否检索
 - 个人事实必须有 Evidence
 - 通用问题可以直接回答
 - 基于资料可总结、改写和生成
+- 回答可展示 Sources
+- 求职助手支持结构化 Job Profile、字段填写与 JD 分析
 
-## Public Demo
+---
 
-在线公开演示使用匿名示例数据（`demo/`）+ 访客临时会话上传。
+## Product Preview
 
-- 支持 TXT / MD / PDF / DOCX（含简历）临时导入与删除自己的上传
-- 会话资料保存在服务器临时目录，不做长期保存
-- Job Profile 仍为合成示例且只读（不可保存 / 导入）
+### 1. Home
 
-本地运行（默认不开启 `PUBLIC_DEMO_MODE`）仍支持完整上传、删除与 Job Profile 维护。
+![Cris.Z Agent Home](docs/screenshots/home.png)
 
-开启方式：在部署环境设置 `PUBLIC_DEMO_MODE=true`。
+### 2. Chat
 
-## Screenshots
+![Cris.Z Agent Chat](docs/screenshots/chat.png)
 
-仓库可后续放入真实截图（当前不附带伪造图）：
+Agent 根据问题类型决定直接回答、检索知识库或读取结构化资料，而不是让每个问题都强制经过 RAG。
 
-- Chat → `docs/screenshots/chat.png`
-- Knowledge Base → `docs/screenshots/knowledge.png`
-- Job Assistant → `docs/screenshots/job-assistant.png`
-- Sources → `docs/screenshots/sources.png`
-- Retrieval Experiment → `docs/screenshots/retrieval-experiment.png`
+### 3. Temporary Knowledge Base
+
+![Knowledge Base](docs/screenshots/knowledge.png)
+
+公开 Demo 支持临时上传 TXT / MD / PDF / DOCX（含简历）。访客会话之间相互隔离；示例资料可从当前会话移除，上传资料不会长期保存。
+
+### 4. Job Assistant
+
+![Job Assistant](docs/screenshots/job-assistant.png)
+
+公开 Demo 中 Job Profile 使用匿名合成数据并保持只读；本地完整版支持导入、保存与维护结构化求职档案。
+
+### 5. Runtime / Retrieval Settings
+
+![Settings](docs/screenshots/settings.png)
+
+默认 Retrieval Mode 为 BM25；Vector / Hybrid 保留为实验能力。
 
 ---
 
 ## Why I Built It
 
-通用大模型有三个常见问题：
+通用大模型在个人场景里有三个常见问题：
 
 - 不知道我的个人资料
 - 容易编造经历
@@ -59,16 +75,18 @@
 | Grounded Fact | 个人事实必须基于 Evidence |
 | Grounded Generation | 基于真实资料总结、改写、生成 |
 | Knowledge Space | 工作 / 求职 / 学习 / 个人 / 临时资料 |
-| File Import | TXT / MD / PDF / DOCX |
+| File Import | TXT / MD / PDF / DOCX（含简历） |
+| Resume-aware Parsing | 简历按经历结构切分；不可靠归属显式标记 |
 | Job Assistant | 求职字段填写、JD 分析、Job Profile |
 | Sources | 回答显示可验证来源 |
 | Hallucination Guard | 防止编造个人经历 |
+| Public Demo Isolation | 临时会话上传、TTL 清理、访客隔离 |
 
 ---
 
 ## Architecture
 
-```
+```text
 User
   ↓
 Cris.Z Agent
@@ -80,16 +98,14 @@ DeepSeek Tool Calling
   ├─ list_documents
   └─ structured Job Profile
   ↓
-Evidence Validation
+Evidence Validation / Fact Guard
   ↓
 Answer + Sources
 ```
 
 **This is not a fixed RAG pipeline.**
 
-RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。
-
-通用问题可以直接回答；涉及个人资料时，再决定是否检索、读文档、引用 Evidence。
+RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。通用问题可以直接回答；涉及个人资料时，再决定是否检索、读文档、引用 Evidence。
 
 ---
 
@@ -99,7 +115,7 @@ RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。
 
 例子：「我的学校是什么？」
 
-规则：必须有 Evidence。没有证据就不能当事实写进答案。
+规则：必须有 Evidence。没有证据就不能把结论当成个人事实。
 
 ### General Knowledge
 
@@ -121,13 +137,9 @@ RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。
 
 用户问：「你有没有在 Google 工作过？」
 
-知识库没有相关记录。
+如果知识库没有相关记录，Agent 不直接回答「没有」，而是说明当前资料不足以确认或否认。
 
-错误做法：「没有。」
-
-正确做法：「当前资料中没有足够证据确认或否认。」
-
-解释：**absence of evidence ≠ evidence of absence**。缺少记录不能直接否定经历。
+**absence of evidence ≠ evidence of absence**。
 
 ### Case 2：拒绝顺着错误前提编造
 
@@ -135,13 +147,11 @@ RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。
 
 如果资料里没有这段经历，Agent 不应顺着错误前提补故事，而应说明没有证据支持该结论。
 
-个人 Agent 的价值，不只是「会回答」，而是**知道边界**。
-
 ---
 
 ## Retrieval Experiment
 
-早期在作品集阶段做过 BM25 / Vector / Hybrid 对比（N=12）：
+早期做过 BM25 / Vector / Hybrid 对比（N=12）：
 
 | Retrieval | Top1 | Top3 | Top5 |
 |---|---:|---:|---:|
@@ -149,16 +159,15 @@ RAG 是 Agent 可以调用的工具，不是每个问题都强制经过 RAG。
 | Vector | 50% | 50% | 58% |
 | Hybrid | 50% | 67% | 83% |
 
-最初假设：Vector / Hybrid 可能改善语义检索。
+结论：BM25 的 Top1 更高；Hybrid 在 Top3 / Top5 与 BM25 持平，没有稳定收益。
 
-实际结果：BM25 的 Top1 更高；Hybrid 在 Top3/Top5 与 BM25 持平，没有稳定收益。
+因此默认使用：
 
-最终决定：
+```text
+RETRIEVAL_MODE=bm25
+```
 
-- 默认：`RETRIEVAL_MODE=bm25`
-- Vector / Hybrid 保留为实验能力
-
-没有因为 Hybrid 更「AI」就强行使用。检索方式用评测证明价值，而不是用概念叙事决定。
+Vector / Hybrid 保留为实验能力。检索策略由评测决定，而不是因为某种方案更“AI”就默认启用。
 
 复现：
 
@@ -170,71 +179,75 @@ npm run eval:retrieval
 
 ## Prompt / Agent Behavior Iteration
 
-真实案例：Grounded Generation（约 500 字）曾出现：
+Grounded Generation（约 500 字）曾出现：
 
 - 调用约 7 个工具
 - 最后一轮 DeepSeek 超时 60s
 
-诊断后发现：不是 Retrieval 慢，也不是单个 Tool 慢，而是**冗余工具调用 + 最终生成上下文变大**。
+诊断后发现主要问题是：**冗余工具调用 + 最终生成上下文变大**，而不是 Retrieval 或单个 Tool 本身慢。
 
-改法：约束 Agent 使用 minimum set of tools；压缩工具结果中送入模型的片段长度。
+改法：约束 Agent 使用 minimum sufficient tools，并压缩工具结果进入最终生成上下文的长度。
 
-优化后（本地重复测试）：
+优化后本地重复测试：
 
 - 约 150 字生成：约 6–12 秒
 - 约 500 字生成：约 11–14 秒
 - 重复测试无 timeout
 
-没有把 timeout 从 60 秒粗暴改成 120 秒来「掩盖」问题。
-
 ---
 
 ## Resume / Job Profile Reliability
 
-真实问题：PDF 文本抽取后，**公司 → 岗位 → 项目**关系可能被打乱。内容仍是真的，但归属可能错配。
-
-因此加入：
+PDF 文本抽取后，**公司 → 岗位 → 项目**关系可能被打乱。为避免错误归属，加入：
 
 - resume-aware chunking
-- `affiliation_unknown`（无法可靠绑定公司时明确标出）
-- structured Job Profile（人工维护的求职事实权威源）
+- `affiliation_unknown`
+- structured Job Profile
 
-事实优先级：
-
-```
-Structured Job Profile
-  >
-人工确认资料
-  >
-上传原始简历
-  >
-legacy
-```
-
-Agent 不允许根据文本位置、chunk 顺序或相邻片段，自行猜测「项目属于哪家公司」。
+Agent 不允许根据文本位置、chunk 顺序或相邻片段，自行猜测项目属于哪家公司。
 
 ---
 
 ## Job Assistant
 
-`/job-assistant` 当前支持：
+`/job-assistant` 支持：
 
 - 结构化 Job Profile
-- JSON 导入（预览 → diff → 确认后保存）
+- JSON 导入（本地完整版）
 - 公司—岗位—项目绑定
 - 求职字段自动填写
 - 每字段单独复制
 - JD 匹配分析
-- 缺失事实显示：`[需要人工补充]`
-- 生成字段标记：`AI 生成建议`
+- 缺失事实显示 `[需要人工补充]`
+- 生成字段标记 `AI 生成建议`
 
 不包含浏览器自动填表或自动投递。
 
 ---
 
+## Public Demo
+
+在线 Demo：**https://cris-z-agent.onrender.com**
+
+Public Demo 使用匿名 synthetic data + 会话级临时上传：
+
+- 每个浏览器会话使用独立随机 session id
+- 支持 TXT / MD / PDF / DOCX（含简历）
+- 最多 5 个用户文件 / session
+- 单文件最大 3 MB
+- 解析文本最大 100,000 chars
+- 临时会话 TTL：60 分钟无活动
+- 示例资料可从当前会话移除，不影响其他访客
+- 不读取共享 `.data`
+- Job Profile 保持匿名 synthetic read-only
+
+公开演示不提供长期存储保证，请勿上传高度敏感信息。
+
+---
+
 ## Privacy
 
-本地保存：
+本地版保存：
 
 - 上传原始文件
 - Job Profile
@@ -248,13 +261,13 @@ Agent 不允许根据文本位置、chunk 顺序或相邻片段，自行猜测�
 
 因此：**不是完全本地推理**。
 
-`DEEPSEEK_API_KEY` 只在服务端使用，不应提交到 Git。
+`DEEPSEEK_API_KEY` 仅在服务端环境变量中使用，不应提交到 Git。
 
 ---
 
 ## Tech Stack
 
-- Next.js
+- Next.js 16
 - TypeScript
 - DeepSeek Chat Completions / Tool Calling
 - Local BM25
@@ -263,26 +276,32 @@ Agent 不允许根据文本位置、chunk 顺序或相邻片段，自行猜测�
 - pdf-parse
 - mammoth
 - Vitest
+- Render（Public Demo）
 
 ---
 
 ## Evaluation
 
-当前自动化测试：
-
 ```bash
 npm test
+npm run lint
+npm run build
 ```
 
-最新状态：**19 files / 104 tests**。
+当前 Release Gate：
+
+- **19 test files / 115 tests passed**
+- ESLint passed
+- Production build passed
 
 另外保留：
 
-- Retrieval Eval（`npm run eval:retrieval`）
-- Hallucination cases（Fact Guard 相关测试）
-- Grounded Generation 行为约束（Prompt / 最少工具）
-- Performance diagnostics（`npm run diagnose:timeout` 等）
-- Resume affiliation / Job Profile 导入与填写测试
+- Retrieval Eval
+- Fact Guard / Hallucination regression
+- Grounded Generation / Tool limit tests
+- Resume affiliation tests
+- Public Demo session-isolation tests
+- Timeout diagnostics
 
 ---
 
@@ -298,19 +317,14 @@ npm install
 Copy-Item .env.example .env.local
 ```
 
-配置：
+配置示例：
 
-```
+```text
 DEEPSEEK_API_KEY=
 DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 RETRIEVAL_MODE=bm25
-```
-
-可选公开演示：
-
-```
-PUBLIC_DEMO_MODE=true
+PUBLIC_DEMO_MODE=false
 ```
 
 启动：
@@ -338,13 +352,7 @@ npm run dev
 - 真实 Job Profile
 - manual evaluation output
 
-GitHub 只保留：
-
-- 代码
-- 匿名 fixture
-- 文档
-- 测试
-- 评测脚本
+公开仓库只保留代码、匿名 fixture / demo data、文档、测试和评测脚本。
 
 ---
 
@@ -359,14 +367,16 @@ GitHub 只保留：
 - 没有浏览器自动投递
 - 依赖 DeepSeek API
 - 尚未进行正式用户规模验证
+- Render Free 实例冷启动会影响首次访问速度
 
 ---
 
 ## What I Learned / Product Decisions
 
 1. **RAG 不应该是每个问题的强制路径。** Agent 应能直接回答通用问题。
-2. **Evidence 用来约束事实，不应该锁死生成能力。** 总结、改写、申请理由仍可生成，但需标明边界。
-3. **没有证据不等于事实不存在。** 不能把「资料里没有」说成「一定没做过」。
-4. **Retrieval 技术必须用评测证明价值。** 不因为 Hybrid 更「先进」就默认启用。
-5. **工具越多不等于答案越可靠。** 冗余工具调用会拖垮最终生成。
-6. **个人 Agent 的知识边界比「功能数量」更重要。** 知道什么时候不该编，比多一个入口更关键。
+2. **Evidence 用来约束事实，不应该锁死生成能力。**
+3. **没有证据不等于事实不存在。**
+4. **Retrieval 技术必须用评测证明价值。**
+5. **工具越多不等于答案越可靠。** 冗余调用会拖慢最终生成。
+6. **个人 Agent 的知识边界比功能数量更重要。** 知道什么时候不该编，比多一个入口更关键。
+7. **公开 Demo 的交互能力与隐私隔离要同时设计。** 临时上传、session isolation、TTL 比“直接开放共享文件系统”更适合公开体验。
