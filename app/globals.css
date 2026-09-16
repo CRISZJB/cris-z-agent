@@ -70,6 +70,18 @@ a {
   color: var(--pine);
   font-size: 0.9rem;
   text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.demo-mode-banner-sep {
+  opacity: 0.7;
+}
+
+.demo-mode-banner-note {
+  color: var(--ink-soft);
 }
 
 .page {
@@ -565,8 +577,126 @@ a {
   border-color: var(--pine);
 }
 
+.dropzone-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  cursor: pointer;
+}
+
 .dropzone-disabled {
-  opacity: 0.65;
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(24, 34, 29, 0.04);
+  pointer-events: none;
+}
+
+.dropzone-subtext {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.scope-bar-disabled select:disabled,
+.knowledge-panel select:disabled,
+.document-list button:disabled,
+.job-import-row button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.demo-readonly-callout {
+  margin: 0.8rem 0 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  background: #eef6f1;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.demo-readonly-callout p {
+  margin: 0.35rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.demo-readonly-callout p:first-child {
+  margin-top: 0;
+}
+
+.demo-readonly-title {
+  margin: 0;
+  color: var(--pine) !important;
+  font-weight: 600;
+  font-size: 1rem !important;
+}
+
+.demo-inline-hint {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.document-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.15rem;
+}
+
+.doc-tag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--pine);
+  font-size: 0.75rem;
+}
+
+.document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.job-profile-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem 0.8rem;
+}
+
+.job-profile-heading h2 {
+  margin: 0;
+}
+
+.demo-readonly-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--pine);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.job-profile-fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.job-profile-fields:disabled {
+  opacity: 0.72;
+}
+
+.job-profile-fields:disabled textarea,
+.job-profile-fields:disabled button {
   cursor: not-allowed;
 }
 

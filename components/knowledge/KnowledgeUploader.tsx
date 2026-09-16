@@ -8,6 +8,10 @@ type Props = {
   publicDemoMode?: boolean;
 };
 
+function isSyntheticDoc(doc: StoredDocument) {
+  return doc.document_id.startsWith("demo-");
+}
+
 export function KnowledgeUploader({ publicDemoMode = false }: Props) {
   const [space, setSpace] = useState<KnowledgeSpaceId>("work");
   const [contentType, setContentType] = useState<"general" | "resume">("general");
@@ -16,7 +20,6 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
   const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [demoMode, setDemoMode] = useState(publicDemoMode);
-  const writeDisabled = demoMode || busy;
 
   async function refresh() {
     const response = await fetch("/api/documents");
@@ -50,21 +53,20 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
     };
   }, []);
 
-  async function uploadFile(file: File, overrideContentType?: "general" | "resume") {
-    if (demoMode) {
-      setMessage("公开演示模式暂不支持上传个人文件。");
-      return;
-    }
+  async function uploadFile(file: File) {
     setBusy(true);
     setMessage("");
-    const resolvedType = overrideContentType ?? contentType;
     try {
       const form = new FormData();
       form.set("file", file);
       form.set("knowledge_space", space);
-      form.set("content_type", resolvedType);
+      form.set("content_type", contentType);
       const response = await fetch("/api/documents", { method: "POST", body: form });
-      const payload = (await response.json()) as { error?: string; document?: StoredDocument };
+      const payload = (await response.json()) as {
+        error?: string;
+        code?: string;
+        document?: StoredDocument;
+      };
       if (!response.ok) {
         throw new Error(payload.error || "导入失败");
       }
@@ -78,24 +80,37 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
   }
 
   async function onDelete(documentId: string) {
-    if (demoMode) {
-      setMessage("公开演示模式暂不支持删除文件。");
+    if (documentId.startsWith("demo-")) {
       return;
     }
     setBusy(true);
-    await fetch(`/api/documents?document_id=${encodeURIComponent(documentId)}`, {
-      method: "DELETE",
-    });
-    await refresh();
-    setBusy(false);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/documents?document_id=${encodeURIComponent(documentId)}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "删除失败");
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "删除失败");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="knowledge-panel">
       {demoMode ? (
-        <p className="privacy-note">
-          公开演示模式暂不支持上传个人文件。下方列表为匿名示例资料，仅供体验检索与回答。
-        </p>
+        <div className="demo-readonly-callout" role="status">
+          <p className="demo-readonly-title">临时演示知识库</p>
+          <p>
+            你可以上传 TXT / MD / PDF / DOCX，包括简历。文件仅用于当前演示会话，不做长期保存，服务休眠、重启或会话过期后可能被清除。
+          </p>
+          <p>请勿上传高度敏感信息。</p>
+        </div>
       ) : (
         <p className="privacy-note">
           文件保存在本机 <code>.data/uploads/</code>。当回答需要 DeepSeek 推理时，检索到的相关文本片段会发送到
@@ -108,7 +123,7 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
         <select
           id="upload-space"
           value={space}
-          disabled={writeDisabled}
+          disabled={busy}
           onChange={(event) => setSpace(event.target.value as KnowledgeSpaceId)}
         >
           {KNOWLEDGE_SPACES.map((item) => (
@@ -121,7 +136,7 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
         <select
           id="upload-content-type"
           value={contentType}
-          disabled={writeDisabled}
+          disabled={busy}
           onChange={(event) => setContentType(event.target.value as "general" | "resume")}
         >
           <option value="general">通用文档</option>
@@ -129,64 +144,75 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
         </select>
       </div>
 
-      <label
-        className={`dropzone${dragOver ? " active" : ""}${demoMode ? " dropzone-disabled" : ""}`}
+      <div
+        className={`dropzone${dragOver ? " active" : ""}`}
+        role="group"
         onDragOver={(event) => {
           event.preventDefault();
-          if (!demoMode) {
-            setDragOver(true);
-          }
+          setDragOver(true);
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(event) => {
           event.preventDefault();
           setDragOver(false);
-          if (demoMode) {
-            setMessage("公开演示模式暂不支持上传个人文件。");
-            return;
-          }
           const file = event.dataTransfer.files?.[0];
           if (file) {
             void uploadFile(file);
           }
         }}
       >
-        <input
-          type="file"
-          accept=".txt,.md,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          disabled={writeDisabled}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) {
-              void uploadFile(file);
-            }
-            event.target.value = "";
-          }}
-        />
-        {demoMode
-          ? "公开演示模式暂不支持上传个人文件。"
-          : busy
+        <label className="dropzone-label">
+          <input
+            type="file"
+            accept=".txt,.md,.markdown,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                void uploadFile(file);
+              }
+              event.target.value = "";
+            }}
+          />
+          {busy
             ? "导入中…"
-            : "拖拽文件到此处，或点击选择（TXT / MD / PDF / DOCX）"}
-      </label>
+            : demoMode
+              ? "拖拽或选择文件（临时会话上传 · TXT / MD / PDF / DOCX，含简历）"
+              : "拖拽文件到此处，或点击选择（TXT / MD / PDF / DOCX）"}
+        </label>
+      </div>
 
       {message ? <p className="status-note">{message}</p> : null}
 
       <ul className="document-list">
-        {documents.map((doc) => (
-          <li key={doc.document_id}>
-            <div>
-              <strong>{doc.filename}</strong>
-              <span>
-                {doc.knowledge_space} · {doc.content_type === "resume" ? "简历" : "通用"} ·{" "}
-                {doc.chunk_count} 片段
-              </span>
-            </div>
-            <button type="button" disabled={writeDisabled} onClick={() => void onDelete(doc.document_id)}>
-              删除
-            </button>
-          </li>
-        ))}
+        {documents.map((doc) => {
+          const synthetic = isSyntheticDoc(doc);
+          return (
+            <li key={doc.document_id}>
+              <div>
+                <strong>{doc.filename}</strong>
+                <span className="document-tags">
+                  {synthetic ? <span className="doc-tag">示例资料</span> : null}
+                  {!synthetic && demoMode ? <span className="doc-tag">本次会话上传</span> : null}
+                  {doc.content_type === "resume" ? <span className="doc-tag">简历</span> : null}
+                </span>
+                <span>
+                  {doc.knowledge_space} · {doc.content_type === "resume" ? "简历" : "通用"} ·{" "}
+                  {doc.chunk_count} 片段
+                </span>
+              </div>
+              <div className="document-actions">
+                {synthetic ? (
+                  <span className="demo-inline-hint">示例资料</span>
+                ) : (
+                  <button type="button" disabled={busy} onClick={() => void onDelete(doc.document_id)}>
+                    删除
+                  </button>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

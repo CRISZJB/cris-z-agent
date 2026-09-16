@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { chunkPlainText, evidenceIdForChunk } from "./chunk";
-import { parseFileBuffer } from "./parser";
+import { parseFileBuffer, detectDocumentType } from "./parser";
 import { chunkResumeText, parseContentType, type ContentType, type ResumeChunkMeta } from "./resume-chunk";
 import type {
   DocumentChunkRecord,
@@ -14,8 +14,24 @@ import { EMPTY_JOB_PROFILE as EMPTY_PROFILE } from "./types";
 import { normalizeJobProfile } from "./job-profile";
 import type { KnowledgeSpaceId } from "../knowledge/spaces";
 import { isKnowledgeSpaceId } from "../knowledge/spaces";
-import { assertDemoWritable, isPublicDemoMode } from "../demo/mode";
+import {
+  assertDemoWritable,
+  DemoQuotaError,
+  DemoModeWriteError,
+  isPublicDemoMode,
+  isSyntheticDemoDocumentId,
+} from "../demo/mode";
 import { loadDemoDocumentsStore, loadDemoJobProfile } from "../demo/store";
+import {
+  DEMO_MAX_PARSED_CHARS,
+  DEMO_MAX_SESSION_UPLOADS,
+  DEMO_MAX_UPLOAD_BYTES,
+  ensureDemoSessionDirs,
+  getDemoSessionUploadsDir,
+  readSessionDocumentsStore,
+  writeSessionDocumentsStore,
+} from "../demo/ephemeral";
+import { getDemoSessionId, requireDemoSessionId } from "../demo/session";
 
 const DATA_ROOT = path.join(process.cwd(), ".data");
 const UPLOADS_DIR = path.join(DATA_ROOT, "uploads");
@@ -39,9 +55,30 @@ function emptyStore(): DocumentsStoreFile {
   return { version: 1, documents: [], chunks: [] };
 }
 
+function mergeDocumentStores(
+  base: DocumentsStoreFile,
+  session: DocumentsStoreFile,
+): DocumentsStoreFile {
+  const sessionIds = new Set(session.documents.map((doc) => doc.document_id));
+  return {
+    version: 1,
+    documents: [...session.documents, ...base.documents.filter((doc) => !sessionIds.has(doc.document_id))],
+    chunks: [
+      ...session.chunks,
+      ...base.chunks.filter((chunk) => !sessionIds.has(chunk.document_id)),
+    ],
+  };
+}
+
 export function readDocumentsStore(): DocumentsStoreFile {
   if (isPublicDemoMode()) {
-    return loadDemoDocumentsStore();
+    const base = loadDemoDocumentsStore();
+    const sessionId = getDemoSessionId();
+    if (!sessionId) {
+      return base;
+    }
+    const session = readSessionDocumentsStore(sessionId);
+    return mergeDocumentStores(base, session);
   }
   ensureDirs();
   if (!fs.existsSync(DOCUMENTS_FILE)) {
@@ -65,7 +102,7 @@ export function readDocumentsStore(): DocumentsStoreFile {
   }
 }
 
-function writeDocumentsStore(store: DocumentsStoreFile) {
+function writeLocalDocumentsStore(store: DocumentsStoreFile) {
   assertDemoWritable();
   ensureDirs();
   fs.writeFileSync(DOCUMENTS_FILE, JSON.stringify(store, null, 2), "utf8");
@@ -109,15 +146,117 @@ export function countDocumentsBySpace(): Record<KnowledgeSpaceId, number> {
   return counts;
 }
 
+function assertDemoUploadAllowed(filename: string, buffer: Buffer, sessionDocCount: number) {
+  if (!detectDocumentType(filename)) {
+    throw new Error("不支持的文件类型。公开演示支持 .txt / .md / .pdf / .docx。");
+  }
+  if (buffer.byteLength > DEMO_MAX_UPLOAD_BYTES) {
+    throw new DemoQuotaError(
+      "DEMO_FILE_TOO_LARGE",
+      `单个文件不能超过 ${Math.floor(DEMO_MAX_UPLOAD_BYTES / (1024 * 1024))} MB。`,
+    );
+  }
+  if (sessionDocCount >= DEMO_MAX_SESSION_UPLOADS) {
+    throw new DemoQuotaError(
+      "DEMO_UPLOAD_LIMIT",
+      `每个演示会话最多上传 ${DEMO_MAX_SESSION_UPLOADS} 个文件。`,
+    );
+  }
+}
+
+async function importDemoSessionDocument(input: {
+  filename: string;
+  buffer: Buffer;
+  knowledgeSpace: KnowledgeSpaceId;
+  contentType?: ContentType;
+}): Promise<StoredDocument> {
+  const sessionId = requireDemoSessionId();
+  const sessionStore = readSessionDocumentsStore(sessionId);
+  assertDemoUploadAllowed(input.filename, input.buffer, sessionStore.documents.length);
+
+  const contentType = parseContentType(input.contentType);
+  const parsed = await parseFileBuffer(input.buffer, input.filename);
+  if (!parsed.text.trim()) {
+    throw new Error("文件解析后没有可用文本。");
+  }
+  if (parsed.text.length > DEMO_MAX_PARSED_CHARS) {
+    throw new DemoQuotaError(
+      "DEMO_TEXT_TOO_LARGE",
+      `解析后的文本不能超过 ${DEMO_MAX_PARSED_CHARS} 字符。`,
+    );
+  }
+
+  ensureDemoSessionDirs(sessionId);
+  const documentId = `doc-${createHash("sha1")
+    .update(`${input.filename}-${Date.now()}-${randomUUID()}`)
+    .digest("hex")
+    .slice(0, 12)}`;
+  const safeName = input.filename.replace(/[^\w.\u4e00-\u9fff-]+/g, "_");
+  const storedName = `${documentId}-${safeName}`;
+  const uploadsDir = getDemoSessionUploadsDir(sessionId);
+  const sourcePath = path.join(uploadsDir, storedName);
+  fs.writeFileSync(sourcePath, input.buffer);
+
+  const pieces =
+    contentType === "resume" ? chunkResumeText(parsed.text) : chunkPlainText(parsed.text);
+  const effectivePieces = pieces.length > 0 ? pieces : chunkPlainText(parsed.text);
+
+  const chunkRecords: DocumentChunkRecord[] = effectivePieces.map((piece) => {
+    const resumeMeta: ResumeChunkMeta | undefined =
+      "meta" in piece ? (piece.meta as ResumeChunkMeta | undefined) : undefined;
+    return {
+      evidence_id: evidenceIdForChunk(documentId, piece.index),
+      document_id: documentId,
+      filename: input.filename,
+      knowledge_space: input.knowledgeSpace,
+      section: piece.section,
+      content: piece.content,
+      chunk_index: piece.index,
+      content_type: contentType,
+      section_type: resumeMeta?.section_type,
+      company: resumeMeta?.company,
+      role: resumeMeta?.role,
+      date_range: resumeMeta?.date_range,
+      school: resumeMeta?.school,
+      degree: resumeMeta?.degree,
+      major: resumeMeta?.major,
+      affiliation_unknown: resumeMeta?.affiliation_unknown,
+    };
+  });
+
+  const document: StoredDocument = {
+    document_id: documentId,
+    filename: input.filename,
+    knowledge_space: input.knowledgeSpace,
+    document_type: parsed.documentType,
+    content_type: contentType,
+    imported_at: new Date().toISOString(),
+    source_path: sourcePath.split(path.sep).join("/"),
+    char_count: parsed.text.length,
+    chunk_count: chunkRecords.length,
+  };
+
+  sessionStore.documents.unshift(document);
+  sessionStore.chunks = [
+    ...chunkRecords,
+    ...sessionStore.chunks.filter((chunk) => chunk.document_id !== documentId),
+  ];
+  writeSessionDocumentsStore(sessionId, sessionStore);
+  return document;
+}
+
 export async function importDocumentFile(input: {
   filename: string;
   buffer: Buffer;
   knowledgeSpace: KnowledgeSpaceId;
   contentType?: ContentType;
 }): Promise<StoredDocument> {
-  assertDemoWritable();
   if (!isKnowledgeSpaceId(input.knowledgeSpace)) {
     throw new Error("无效的知识空间。");
+  }
+
+  if (isPublicDemoMode()) {
+    return importDemoSessionDocument(input);
   }
 
   const contentType = parseContentType(input.contentType);
@@ -138,9 +277,7 @@ export async function importDocumentFile(input: {
 
   const pieces =
     contentType === "resume" ? chunkResumeText(parsed.text) : chunkPlainText(parsed.text);
-  // Safety: never drop content if resume chunker returns nothing.
-  const effectivePieces =
-    pieces.length > 0 ? pieces : chunkPlainText(parsed.text);
+  const effectivePieces = pieces.length > 0 ? pieces : chunkPlainText(parsed.text);
 
   const chunkRecords: DocumentChunkRecord[] = effectivePieces.map((piece) => {
     const resumeMeta: ResumeChunkMeta | undefined =
@@ -180,12 +317,35 @@ export async function importDocumentFile(input: {
   const store = readDocumentsStore();
   store.documents.unshift(document);
   store.chunks = [...chunkRecords, ...store.chunks.filter((chunk) => chunk.document_id !== documentId)];
-  writeDocumentsStore(store);
+  writeLocalDocumentsStore(store);
   return document;
 }
 
 export function deleteStoredDocument(documentId: string) {
-  assertDemoWritable();
+  if (isPublicDemoMode()) {
+    if (isSyntheticDemoDocumentId(documentId)) {
+      throw new DemoModeWriteError("公开演示模式不允许删除示例资料。");
+    }
+    const sessionId = requireDemoSessionId();
+    const sessionStore = readSessionDocumentsStore(sessionId);
+    const existing = sessionStore.documents.find((doc) => doc.document_id === documentId);
+    if (!existing) {
+      // Do not reveal whether another session owns this id.
+      return false;
+    }
+    sessionStore.documents = sessionStore.documents.filter((doc) => doc.document_id !== documentId);
+    sessionStore.chunks = sessionStore.chunks.filter((chunk) => chunk.document_id !== documentId);
+    writeSessionDocumentsStore(sessionId, sessionStore);
+    if (existing.source_path && fs.existsSync(existing.source_path)) {
+      try {
+        fs.unlinkSync(existing.source_path);
+      } catch {
+        // ignore unlink failures
+      }
+    }
+    return true;
+  }
+
   const store = readDocumentsStore();
   const existing = store.documents.find((doc) => doc.document_id === documentId);
   if (!existing) {
@@ -193,7 +353,7 @@ export function deleteStoredDocument(documentId: string) {
   }
   store.documents = store.documents.filter((doc) => doc.document_id !== documentId);
   store.chunks = store.chunks.filter((chunk) => chunk.document_id !== documentId);
-  writeDocumentsStore(store);
+  writeLocalDocumentsStore(store);
   const absolute = path.join(process.cwd(), existing.source_path);
   if (fs.existsSync(absolute)) {
     fs.unlinkSync(absolute);

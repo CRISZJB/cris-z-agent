@@ -243,11 +243,23 @@ export function JobAssistantPanel({ publicDemoMode = false }: { publicDemoMode?:
 
   return (
     <div className="job-assistant">
-      <section className="job-profile-editor">
-        <h2>求职档案（结构化权威源）</h2>
-        <p>
-          本地维护的求职事实。空字段保持为空，不会自动补造。导入 JSON 需预览确认；已有档案不会自动覆盖。
-        </p>
+      <section className={`job-profile-editor${demoMode ? " job-profile-editor-demo" : ""}`}>
+        <div className="job-profile-heading">
+          <h2>求职档案（结构化权威源）</h2>
+          {demoMode ? <span className="demo-readonly-badge">只读演示</span> : null}
+        </div>
+        {demoMode ? (
+          <div className="demo-readonly-callout" role="status">
+            <p className="demo-readonly-title">
+              当前展示匿名示例 Job Profile。公开 Demo 不保存访客个人资料。
+            </p>
+            <p>可体验「根据资料填写」与 JD 分析；导入与保存仅在本地完整版可用。</p>
+          </div>
+        ) : (
+          <p>
+            本地维护的求职事实。空字段保持为空，不会自动补造。导入 JSON 需预览确认；已有档案不会自动覆盖。
+          </p>
+        )}
 
         {conflictHints.length > 0 ? (
           <div className="job-conflict-banner" role="status">
@@ -271,25 +283,31 @@ export function JobAssistantPanel({ publicDemoMode = false }: { publicDemoMode?:
           <button
             type="button"
             disabled={profileWriteDisabled}
-            title={demoMode ? "公开演示模式不允许导入 Job Profile" : undefined}
-            onClick={() => fileRef.current?.click()}
+            title={demoMode ? "公开 Demo 不保存访客个人资料" : undefined}
+            onClick={() => {
+              if (demoMode) {
+                return;
+              }
+              fileRef.current?.click();
+            }}
           >
             导入 Job Profile
           </button>
           <button
             type="button"
             disabled={profileWriteDisabled}
-            title={demoMode ? "公开演示模式不允许保存 Job Profile" : undefined}
-            onClick={() => void saveProfile()}
+            title={demoMode ? "公开 Demo 不保存访客个人资料" : undefined}
+            onClick={() => {
+              if (demoMode) {
+                return;
+              }
+              void saveProfile();
+            }}
           >
             保存档案
           </button>
+          {demoMode ? <span className="demo-inline-hint">公开 Demo 为只读</span> : null}
         </div>
-        {demoMode ? (
-          <p className="privacy-note">
-            公开演示模式：可浏览匿名档案并使用「根据资料填写」，但不可保存或导入。
-          </p>
-        ) : null}
 
         {importPreview ? (
           <div className="job-import-preview">
@@ -354,6 +372,7 @@ export function JobAssistantPanel({ publicDemoMode = false }: { publicDemoMode?:
           </div>
         ) : null}
 
+        <fieldset className="job-profile-fields" disabled={demoMode} aria-label="求职档案字段">
         <h3>基本信息</h3>
         <div className="profile-grid">
           {(
@@ -667,6 +686,7 @@ export function JobAssistantPanel({ publicDemoMode = false }: { publicDemoMode?:
             }
           />
         </label>
+        </fieldset>
       </section>
 
       <div className="job-columns">

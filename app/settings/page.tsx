@@ -60,7 +60,7 @@ export default function SettingsPage() {
 
         <p className="privacy-note">
           {demo
-            ? "公开演示模式使用仓库内匿名 demo 数据，不读取本地 .data，也不接受上传。"
+            ? "公开演示模式使用匿名示例资料 + 访客临时会话上传；不读取共享 .data，会话资料不做长期保存。"
             : "原始文件与元数据在本地 .data/。DeepSeek 推理时会发送检索到的相关片段，不是完全本地。"}
         </p>
       </section>
