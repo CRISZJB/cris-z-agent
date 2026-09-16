@@ -9,6 +9,7 @@ export {
   getStoredDocument,
   getDocumentChunks,
   deleteStoredDocument,
+  hideAllSyntheticDemoDocuments,
   countDocumentsBySpace,
   readJobProfile,
   writeJobProfile,

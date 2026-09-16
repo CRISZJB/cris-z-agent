@@ -28,6 +28,8 @@ import {
   DEMO_MAX_UPLOAD_BYTES,
   ensureDemoSessionDirs,
   getDemoSessionUploadsDir,
+  hideDemoDocumentIds,
+  readDemoSessionState,
   readSessionDocumentsStore,
   writeSessionDocumentsStore,
 } from "../demo/ephemeral";
@@ -70,10 +72,26 @@ function mergeDocumentStores(
   };
 }
 
+function visibleSyntheticBase(sessionId?: string): DocumentsStoreFile {
+  const base = loadDemoDocumentsStore();
+  if (!sessionId) {
+    return base;
+  }
+  const hidden = new Set(readDemoSessionState(sessionId).hidden_demo_document_ids);
+  if (hidden.size === 0) {
+    return base;
+  }
+  return {
+    version: 1,
+    documents: base.documents.filter((doc) => !hidden.has(doc.document_id)),
+    chunks: base.chunks.filter((chunk) => !hidden.has(chunk.document_id)),
+  };
+}
+
 export function readDocumentsStore(): DocumentsStoreFile {
   if (isPublicDemoMode()) {
-    const base = loadDemoDocumentsStore();
     const sessionId = getDemoSessionId();
+    const base = visibleSyntheticBase(sessionId);
     if (!sessionId) {
       return base;
     }
@@ -321,12 +339,27 @@ export async function importDocumentFile(input: {
   return document;
 }
 
+export function hideAllSyntheticDemoDocuments(): number {
+  if (!isPublicDemoMode()) {
+    return 0;
+  }
+  const sessionId = requireDemoSessionId();
+  const ids = loadDemoDocumentsStore().documents.map((doc) => doc.document_id);
+  hideDemoDocumentIds(sessionId, ids);
+  return ids.length;
+}
+
 export function deleteStoredDocument(documentId: string) {
   if (isPublicDemoMode()) {
-    if (isSyntheticDemoDocumentId(documentId)) {
-      throw new DemoModeWriteError("公开演示模式不允许删除示例资料。");
-    }
     const sessionId = requireDemoSessionId();
+    if (isSyntheticDemoDocumentId(documentId)) {
+      const exists = loadDemoDocumentsStore().documents.some((doc) => doc.document_id === documentId);
+      if (!exists) {
+        return false;
+      }
+      hideDemoDocumentIds(sessionId, [documentId]);
+      return true;
+    }
     const sessionStore = readSessionDocumentsStore(sessionId);
     const existing = sessionStore.documents.find((doc) => doc.document_id === documentId);
     if (!existing) {

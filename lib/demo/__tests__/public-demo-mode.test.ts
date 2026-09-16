@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   deleteStoredDocument,
+  hideAllSyntheticDemoDocuments,
   importDocumentFile,
   listDocumentChunks,
   listStoredDocuments,
@@ -114,7 +115,7 @@ describe("ephemeral public demo mode", () => {
     });
   });
 
-  it("blocks B from deleting A uploads and blocks synthetic deletes", async () => {
+  it("blocks B from deleting A uploads", async () => {
     const uploaded = await runWithDemoSession(sessionA, async () =>
       importDocumentFile({
         filename: "owned-by-a.txt",
@@ -128,11 +129,94 @@ describe("ephemeral public demo mode", () => {
     });
 
     await runWithDemoSession(sessionA, () => {
-      expect(() => deleteStoredDocument("demo-doc-basics")).toThrow(DemoModeWriteError);
       expect(deleteStoredDocument(uploaded.document_id)).toBe(true);
       expect(listStoredDocuments().some((doc) => doc.document_id === uploaded.document_id)).toBe(
         false,
       );
+    });
+  });
+
+  it("hides synthetic docs for session A without affecting session B or tracked demo files", async () => {
+    const demoPath = path.join(process.cwd(), "demo", "documents.json");
+    const before = fs.readFileSync(demoPath, "utf8");
+
+    await runWithDemoSession(sessionA, () => {
+      expect(listStoredDocuments().some((doc) => doc.document_id === "demo-doc-basics")).toBe(true);
+      expect(deleteStoredDocument("demo-doc-basics")).toBe(true);
+      expect(listStoredDocuments().some((doc) => doc.document_id === "demo-doc-basics")).toBe(false);
+      expect(listDocumentChunks().some((chunk) => chunk.document_id === "demo-doc-basics")).toBe(
+        false,
+      );
+    });
+
+    await runWithDemoSession(sessionB, () => {
+      expect(listStoredDocuments().some((doc) => doc.document_id === "demo-doc-basics")).toBe(true);
+      expect(listDocumentChunks().some((chunk) => chunk.document_id === "demo-doc-basics")).toBe(
+        true,
+      );
+    });
+
+    expect(fs.readFileSync(demoPath, "utf8")).toBe(before);
+  });
+
+  it("excludes hidden synthetic chunks from BM25 and search_knowledge sources", async () => {
+    const query = "公开演示用的完全虚构资料";
+    await runWithDemoSession(sessionA, async () => {
+      const { runWithIncludeLegacy } = await import("../../knowledge/visibility");
+      await runWithIncludeLegacy(false, () => {
+        expect(bm25Search(query, 5, "job").some((hit) => hit.evidenceId?.startsWith("demo-doc-basics"))).toBe(
+          true,
+        );
+      });
+      expect(deleteStoredDocument("demo-doc-basics")).toBe(true);
+      await runWithIncludeLegacy(false, () => {
+        expect(bm25Search(query, 5, "job").some((hit) => hit.evidenceId?.startsWith("demo-doc-basics"))).toBe(
+          false,
+        );
+      });
+      const { result } = await executeTool(
+        "search_knowledge",
+        JSON.stringify({ query, knowledge_space: "job" }),
+      );
+      expect(result.ok).toBe(true);
+      expect(result.evidence.some((item) => item.id.startsWith("demo-doc-basics"))).toBe(false);
+    });
+  });
+
+  it("bulk-clears synthetic docs without removing session uploads", async () => {
+    const uploaded = await runWithDemoSession(sessionA, async () =>
+      importDocumentFile({
+        filename: "keep-me.txt",
+        buffer: Buffer.from("session upload stays", "utf8"),
+        knowledgeSpace: "temporary",
+      }),
+    );
+
+    await runWithDemoSession(sessionA, () => {
+      const cleared = hideAllSyntheticDemoDocuments();
+      expect(cleared).toBeGreaterThan(0);
+      expect(listStoredDocuments().every((doc) => !doc.document_id.startsWith("demo-"))).toBe(true);
+      expect(listStoredDocuments().some((doc) => doc.document_id === uploaded.document_id)).toBe(true);
+    });
+
+    const sessionC = createDemoSessionId();
+    await runWithDemoSession(sessionC, () => {
+      expect(listStoredDocuments().some((doc) => doc.document_id.startsWith("demo-"))).toBe(true);
+    });
+  });
+
+  it("restores default synthetic docs after TTL cleanup", async () => {
+    await runWithDemoSession(sessionA, () => {
+      hideAllSyntheticDemoDocuments();
+      expect(listStoredDocuments().some((doc) => doc.document_id.startsWith("demo-"))).toBe(false);
+    });
+
+    const activityPath = path.join(getDemoSessionRoot(sessionA), ".last_activity");
+    fs.writeFileSync(activityPath, String(Date.now() - DEMO_SESSION_TTL_MS - 1000), "utf8");
+    cleanupExpiredDemoSessions();
+
+    await runWithDemoSession(sessionA, () => {
+      expect(listStoredDocuments().some((doc) => doc.document_id.startsWith("demo-"))).toBe(true);
     });
   });
 

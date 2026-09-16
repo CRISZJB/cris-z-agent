@@ -655,12 +655,12 @@ a {
   font-size: 0.75rem;
 }
 
-.document-actions {
+.demo-clear-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  gap: 0.7rem;
+  margin: 0.4rem 0 1rem;
 }
 
 .job-profile-heading {

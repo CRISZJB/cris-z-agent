@@ -20,17 +20,26 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
   const [message, setMessage] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [demoMode, setDemoMode] = useState(publicDemoMode);
+  const [hasVisibleSynthetic, setHasVisibleSynthetic] = useState(publicDemoMode);
 
   async function refresh() {
     const response = await fetch("/api/documents");
     const payload = (await response.json()) as {
       documents?: StoredDocument[];
       public_demo_mode?: boolean;
+      has_visible_synthetic?: boolean;
     };
-    setDocuments(payload.documents ?? []);
+    const nextDocs = payload.documents ?? [];
+    setDocuments(nextDocs);
     if (typeof payload.public_demo_mode === "boolean") {
       setDemoMode(payload.public_demo_mode);
     }
+    const visible =
+      typeof payload.has_visible_synthetic === "boolean"
+        ? payload.has_visible_synthetic
+        : nextDocs.some(isSyntheticDoc);
+    setHasVisibleSynthetic(visible);
+    return { documents: nextDocs, hasVisibleSynthetic: visible };
   }
 
   useEffect(() => {
@@ -40,12 +49,19 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
       const payload = (await response.json()) as {
         documents?: StoredDocument[];
         public_demo_mode?: boolean;
+        has_visible_synthetic?: boolean;
       };
       if (!cancelled) {
-        setDocuments(payload.documents ?? []);
+        const nextDocs = payload.documents ?? [];
+        setDocuments(nextDocs);
         if (typeof payload.public_demo_mode === "boolean") {
           setDemoMode(payload.public_demo_mode);
         }
+        setHasVisibleSynthetic(
+          typeof payload.has_visible_synthetic === "boolean"
+            ? payload.has_visible_synthetic
+            : nextDocs.some(isSyntheticDoc),
+        );
       }
     })();
     return () => {
@@ -70,8 +86,12 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
       if (!response.ok) {
         throw new Error(payload.error || "导入失败");
       }
-      setMessage(`已导入：${payload.document?.filename}`);
-      await refresh();
+      const next = await refresh();
+      if (demoMode && next.hasVisibleSynthetic) {
+        setMessage("已上传自己的资料。若希望只基于你的文档检索，可清空示例资料。");
+      } else {
+        setMessage(`已导入：${payload.document?.filename}`);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "导入失败");
     } finally {
@@ -80,9 +100,6 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
   }
 
   async function onDelete(documentId: string) {
-    if (documentId.startsWith("demo-")) {
-      return;
-    }
     setBusy(true);
     setMessage("");
     try {
@@ -91,11 +108,28 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(payload.error || "删除失败");
+        throw new Error(payload.error || "操作失败");
       }
       await refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "删除失败");
+      setMessage(error instanceof Error ? error.message : "操作失败");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearSyntheticDocs() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/documents?mode=hide_all_demo", { method: "DELETE" });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "清空示例资料失败");
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "清空示例资料失败");
     } finally {
       setBusy(false);
     }
@@ -182,6 +216,19 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
         </label>
       </div>
 
+      {demoMode && hasVisibleSynthetic ? (
+        <div className="demo-clear-row">
+          <button type="button" disabled={busy} onClick={() => void clearSyntheticDocs()}>
+            清空示例资料
+          </button>
+          <span className="demo-inline-hint">仅对当前演示会话生效，不会影响其他访客。</span>
+        </div>
+      ) : null}
+
+      {demoMode && !hasVisibleSynthetic ? (
+        <p className="privacy-note">示例资料已从本次会话移除。你可以上传自己的文档进行体验。</p>
+      ) : null}
+
       {message ? <p className="status-note">{message}</p> : null}
 
       <ul className="document-list">
@@ -202,13 +249,9 @@ export function KnowledgeUploader({ publicDemoMode = false }: Props) {
                 </span>
               </div>
               <div className="document-actions">
-                {synthetic ? (
-                  <span className="demo-inline-hint">示例资料</span>
-                ) : (
-                  <button type="button" disabled={busy} onClick={() => void onDelete(doc.document_id)}>
-                    删除
-                  </button>
-                )}
+                <button type="button" disabled={busy} onClick={() => void onDelete(doc.document_id)}>
+                  {synthetic ? "从本次会话移除" : "删除"}
+                </button>
               </div>
             </li>
           );

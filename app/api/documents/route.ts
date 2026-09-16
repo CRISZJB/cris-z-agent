@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   deleteStoredDocument,
+  hideAllSyntheticDemoDocuments,
   importDocumentFile,
   listStoredDocuments,
 } from "@/lib/documents";
@@ -21,10 +22,12 @@ export async function GET(request: NextRequest) {
   return withDemoSessionContext(request, () => {
     const space = request.nextUrl.searchParams.get("knowledge_space") ?? "all";
     const scope = space === "all" || isKnowledgeSpaceId(space) ? space : "all";
+    const documents = listStoredDocuments(scope);
     return NextResponse.json({
-      documents: listStoredDocuments(scope),
+      documents,
       public_demo_mode: isPublicDemoMode(),
       ephemeral_demo: isPublicDemoMode(),
+      has_visible_synthetic: documents.some((doc) => isSyntheticDemoDocumentId(doc.document_id)),
     });
   });
 }
@@ -67,19 +70,27 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   return withDemoSessionContext(request, () => {
-    const documentId = request.nextUrl.searchParams.get("document_id");
-    if (!documentId) {
-      return NextResponse.json({ error: "缺少 document_id。" }, { status: 400 });
-    }
+    const mode = request.nextUrl.searchParams.get("mode");
     try {
-      if (isPublicDemoMode() && isSyntheticDemoDocumentId(documentId)) {
-        return demoForbiddenJson("公开演示模式不允许删除示例资料。");
+      if (mode === "hide_all_demo") {
+        if (!isPublicDemoMode()) {
+          return NextResponse.json({ error: "仅公开演示模式支持清空示例资料。" }, { status: 400 });
+        }
+        const hidden = hideAllSyntheticDemoDocuments();
+        return NextResponse.json({ ok: true, hidden, mode: "hide_all_demo" });
+      }
+      const documentId = request.nextUrl.searchParams.get("document_id");
+      if (!documentId) {
+        return NextResponse.json({ error: "缺少 document_id。" }, { status: 400 });
       }
       const ok = deleteStoredDocument(documentId);
       if (!ok) {
         return NextResponse.json({ error: "文档不存在。" }, { status: 404 });
       }
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({
+        ok: true,
+        hidden: isPublicDemoMode() && isSyntheticDemoDocumentId(documentId),
+      });
     } catch (error) {
       if (error instanceof DemoModeWriteError) {
         return demoForbiddenJson(error.message);

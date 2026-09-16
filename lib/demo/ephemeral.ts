@@ -34,6 +34,55 @@ export function getDemoSessionUploadsDir(sessionId: string): string {
   return path.join(getDemoSessionRoot(sessionId), "uploads");
 }
 
+export function getDemoSessionStatePath(sessionId: string): string {
+  return path.join(getDemoSessionRoot(sessionId), "session-state.json");
+}
+
+export type DemoSessionState = {
+  hidden_demo_document_ids: string[];
+};
+
+function emptySessionState(): DemoSessionState {
+  return { hidden_demo_document_ids: [] };
+}
+
+export function readDemoSessionState(sessionId: string): DemoSessionState {
+  const filePath = getDemoSessionStatePath(sessionId);
+  if (!fs.existsSync(filePath)) {
+    return emptySessionState();
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8")) as Partial<DemoSessionState>;
+    const ids = Array.isArray(parsed.hidden_demo_document_ids)
+      ? parsed.hidden_demo_document_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
+      : [];
+    return { hidden_demo_document_ids: [...new Set(ids)] };
+  } catch {
+    return emptySessionState();
+  }
+}
+
+export function writeDemoSessionState(sessionId: string, state: DemoSessionState): void {
+  ensureDemoSessionDirs(sessionId);
+  fs.writeFileSync(
+    getDemoSessionStatePath(sessionId),
+    JSON.stringify(
+      { hidden_demo_document_ids: [...new Set(state.hidden_demo_document_ids)] } satisfies DemoSessionState,
+      null,
+      2,
+    ),
+    "utf8",
+  );
+  touchDemoSession(sessionId);
+}
+
+export function hideDemoDocumentIds(sessionId: string, documentIds: string[]): string[] {
+  const current = readDemoSessionState(sessionId);
+  const next = [...new Set([...current.hidden_demo_document_ids, ...documentIds])];
+  writeDemoSessionState(sessionId, { hidden_demo_document_ids: next });
+  return next;
+}
+
 export function ensureDemoSessionDirs(sessionId: string): string {
   const root = getDemoSessionRoot(sessionId);
   fs.mkdirSync(getDemoSessionUploadsDir(sessionId), { recursive: true });
